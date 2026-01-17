@@ -20,7 +20,7 @@
 
 ### Advanced Features
 - 📊 **Article detail drawer** with full summary, related stories
-- ⏰ **Hourly cron job** - automatically fetches and summarizes news every 60 minutes
+- ⏰ **Cron job** - automatically fetches and summarizes news every 10 minutes
 - 🔄 **Duplicate prevention** - upserts handle existing articles gracefully
 - 📅 **Time range filters** (24h / 7d / 30d / All)
 - 🔗 **Content extraction** for better summaries
@@ -109,7 +109,7 @@ TOP_STORIES_COUNT=30
 │                               └─────────────────────────────────┘  │
 │                                             ▲                      │
 │                    ┌────────────────────────┴────────────────────┐ │
-│                    │          Cron Job (Every 60 min)            │ │
+│                    │          Cron Job (Every 10 min)            │ │
 │                    │  1. Fetch from HackerNews API               │ │
 │                    │  2. Upsert to DB (skip duplicates)          │ │
 │                    │  3. Generate AI summaries for new articles  │ │
@@ -159,19 +159,19 @@ Where:
 
 ## 🔄 Background Ingestion
 
-The app uses Vercel Cron to automatically update the database every hour:
+The app uses Vercel Cron to automatically update the database every 10 minutes:
 
 ```json
 // vercel.json
 {
   "crons": [{
     "path": "/api/ingest",
-    "schedule": "0 * * * *"
+    "schedule": "*/10 * * * *"
   }]
 }
 ```
 
-The cron job runs every 60 minutes to:
+The cron job runs every 10 minutes to:
 1. Fetch latest stories from Hacker News API
 2. Upsert to Supabase (duplicates are handled via `ON CONFLICT`)
 3. Generate AI summaries for articles that don't have them (up to 15 per run)

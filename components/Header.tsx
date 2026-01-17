@@ -39,7 +39,7 @@ export function Header({ onRefresh, isLoading, lastUpdated }: HeaderProps) {
             {lastUpdated && (
               <div 
                 className="hidden sm:flex items-center gap-2 text-xs text-zinc-500 cursor-help"
-                title={`Data from Supabase\nLast query: ${new Date(lastUpdated).toLocaleString()}\nAuto-updates every hour via cron`}
+                title={`Data from Supabase\nLast query: ${new Date(lastUpdated).toLocaleString()}\nAuto-updates every 10 minutes via cron`}
               >
                 <Database className="w-3.5 h-3.5 text-emerald-400" />
                 <span>

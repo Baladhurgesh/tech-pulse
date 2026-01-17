@@ -182,7 +182,7 @@ export default function HomePage() {
             Curated from Hacker News, ranked by engagement, and summarized by AI.
             {!isLoading && articles.length > 0 && (
               <span className="block mt-1 text-sm">
-                {totalCount} stories in database • Auto-updates hourly
+                {totalCount} stories in database • Auto-updates every 10 min
               </span>
             )}
           </p>
@@ -268,7 +268,7 @@ export default function HomePage() {
             </a>
           </p>
           <p className="mt-2 text-zinc-700">
-            Built with Next.js • Auto-updates every hour
+            Built with Next.js • Auto-updates every 10 minutes
           </p>
         </footer>
       </main>

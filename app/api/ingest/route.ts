@@ -18,13 +18,9 @@ interface IngestStats {
 }
 
 /**
- * POST /api/ingest - Background ingestion endpoint for cron jobs
- * Runs every 60 minutes to:
- * 1. Fetch latest news from HackerNews
- * 2. Upsert to database (skip duplicates)
- * 3. Generate AI summaries for articles that don't have them
+ * Shared ingestion logic used by both GET (Vercel Cron) and POST (manual trigger)
  */
-export async function POST(request: Request) {
+async function runIngestion(request: Request): Promise<NextResponse> {
   const startTime = Date.now()
   const stats: IngestStats = {
     fetched: 0,
@@ -183,47 +179,63 @@ export async function POST(request: Request) {
 }
 
 /**
- * GET /api/ingest - Health check and stats endpoint
+ * GET /api/ingest - Vercel Cron endpoint (cron jobs make GET requests)
+ * Also used for health checks when query param ?status=true is present
  */
-export async function GET() {
-  const stats: Record<string, unknown> = {
-    supabaseConfigured: isSupabaseConfigured(),
-    openaiConfigured: isOpenAIConfigured(),
-    cronSecretConfigured: !!process.env.CRON_SECRET,
-    cronSchedule: 'Every 60 minutes',
-  }
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url)
   
-  // Get recent ingest runs if Supabase is configured
-  if (isSupabaseConfigured()) {
-    const supabase = getSupabaseAdmin()
-    if (supabase) {
-      const { data: recentRuns } = await supabase
-        .from('ingest_runs')
-        .select('*')
-        .order('started_at', { ascending: false })
-        .limit(5)
-      
-      stats.recentRuns = recentRuns || []
-      
-      // Get total article count
-      const { count } = await supabase
-        .from('articles')
-        .select('*', { count: 'exact', head: true })
-      
-      stats.totalArticles = count || 0
-      
-      // Get articles with summaries count
-      const { count: withSummaries } = await supabase
-        .from('articles')
-        .select('*', { count: 'exact', head: true })
-        .not('summary', 'is', null)
-      
-      stats.articlesWithSummaries = withSummaries || 0
+  // If ?status=true, return health check info instead of running ingestion
+  if (searchParams.get('status') === 'true') {
+    const statusInfo: Record<string, unknown> = {
+      supabaseConfigured: isSupabaseConfigured(),
+      openaiConfigured: isOpenAIConfigured(),
+      cronSecretConfigured: !!process.env.CRON_SECRET,
+      cronSchedule: 'Every 10 minutes',
     }
+    
+    // Get recent ingest runs if Supabase is configured
+    if (isSupabaseConfigured()) {
+      const supabase = getSupabaseAdmin()
+      if (supabase) {
+        const { data: recentRuns } = await supabase
+          .from('ingest_runs')
+          .select('*')
+          .order('started_at', { ascending: false })
+          .limit(5)
+        
+        statusInfo.recentRuns = recentRuns || []
+        
+        // Get total article count
+        const { count } = await supabase
+          .from('articles')
+          .select('*', { count: 'exact', head: true })
+        
+        statusInfo.totalArticles = count || 0
+        
+        // Get articles with summaries count
+        const { count: withSummaries } = await supabase
+          .from('articles')
+          .select('*', { count: 'exact', head: true })
+          .not('summary', 'is', null)
+        
+        statusInfo.articlesWithSummaries = withSummaries || 0
+      }
+    }
+    
+    return NextResponse.json({
+      status: 'ok',
+      ...statusInfo,
+    })
   }
   
-  return NextResponse.json({
-    status: 'ok',
-    ...stats,
-  })
+  // Otherwise, run ingestion (this is what Vercel Cron calls)
+  return runIngestion(request)
+}
+
+/**
+ * POST /api/ingest - Manual trigger endpoint (from frontend refresh button)
+ */
+export async function POST(request: Request) {
+  return runIngestion(request)
 }
