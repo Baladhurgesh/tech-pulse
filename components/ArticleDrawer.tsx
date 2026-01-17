@@ -92,54 +92,37 @@ export function ArticleDrawer({ article, onClose, onTagClick }: ArticleDrawerPro
   const handleShare = async () => {
     if (!article) return
     
-    // Helper function to copy text to clipboard
-    const copyToClipboard = async (text: string): Promise<boolean> => {
-      // Try modern Clipboard API first (requires secure context)
-      if (navigator.clipboard && window.isSecureContext) {
-        try {
-          await navigator.clipboard.writeText(text)
-          return true
-        } catch {
-          // Fall through to legacy method
-        }
-      }
-      
-      // Fallback: use execCommand with a temporary textarea
+    // Try Web Share API first (works on mobile and some desktop browsers)
+    if (navigator.share) {
       try {
-        const textArea = document.createElement('textarea')
-        textArea.value = text
-        // Prevent scrolling to bottom
-        textArea.style.cssText = 'position:fixed;top:0;left:0;width:2em;height:2em;padding:0;border:none;outline:none;box-shadow:none;background:transparent;'
-        document.body.appendChild(textArea)
-        textArea.focus()
-        textArea.select()
-        
-        const success = document.execCommand('copy')
-        document.body.removeChild(textArea)
-        return success
-      } catch {
-        return false
+        await navigator.share({
+          title: article.title,
+          url: article.url,
+        })
+        return
+      } catch (err) {
+        // User cancelled or share failed, fall through to clipboard
+        if ((err as Error).name === 'AbortError') return
       }
     }
     
-    // Try to copy to clipboard first (expected behavior for "Copy link")
-    const success = await copyToClipboard(article.url)
-    
-    if (success) {
+    // Try clipboard API
+    try {
+      await navigator.clipboard.writeText(article.url)
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
-    } else {
-      // If clipboard fails, try Web Share API as fallback (mainly for mobile)
-      if (navigator.share) {
-        try {
-          await navigator.share({
-            title: article.title,
-            url: article.url,
-          })
-        } catch {
-          // Share was cancelled or failed - that's okay
-        }
-      }
+    } catch {
+      // Final fallback: create a temporary input element
+      const input = document.createElement('input')
+      input.value = article.url
+      input.style.position = 'fixed'
+      input.style.opacity = '0'
+      document.body.appendChild(input)
+      input.select()
+      document.execCommand('copy')
+      document.body.removeChild(input)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
     }
   }
   

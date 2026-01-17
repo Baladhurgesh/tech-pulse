@@ -9,7 +9,7 @@ interface HeaderProps {
 }
 
 export function Header({ onRefresh, isLoading, lastUpdated }: HeaderProps) {
-  const githubUrl = process.env.NEXT_PUBLIC_GITHUB_URL || 'https://github.com'
+  const githubUrl = 'https://github.com/Baladhurgesh/tech-pulse'
   
   return (
     <header className="sticky top-0 z-50 glass border-b border-white/5">
